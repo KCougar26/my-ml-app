@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getCustomerDashboard, placeOrder } from '../services/api';
 import type { CustomerDashboardData, NewOrderRequest } from '../services/api';
 
@@ -32,9 +32,15 @@ export const Dashboard = ({ customerId }: { customerId: number }) => {
     };
 
     setCreatingOrder(true);
-    await placeOrder(newOrderPayload);
-    setCreatingOrder(false);
-    loadData();
+    try {
+      await placeOrder(newOrderPayload);
+      setOrderTotalInput('49.99'); // Reset form
+      loadData();
+    } catch (error) {
+      console.error("Order failed", error);
+    } finally {
+      setCreatingOrder(false);
+    }
   };
 
   if (!data) return <p>Loading...</p>;
@@ -57,7 +63,8 @@ export const Dashboard = ({ customerId }: { customerId: number }) => {
         <ul>
           {data.recentOrders.map(o => (
             <li key={o.orderId}>
-              Order #{o.orderId}: ${o.orderTotal.toFixed(2)} on {new Date(o.orderDate).toLocaleDateString()}
+              {/* FIXED: Changed o.orderDate to o.orderDatetime */}
+              Order #{o.orderId}: ${o.orderTotal.toFixed(2)} on {new Date(o.orderDatetime).toLocaleDateString()}
             </li>
           ))}
         </ul>
@@ -66,26 +73,32 @@ export const Dashboard = ({ customerId }: { customerId: number }) => {
       <div className="card">
         <h3>Place New Order</h3>
         <div className="form-grid">
-          <label>
+          <label style={{ display: 'block', marginBottom: '10px' }}>
             Order Total (USD)
             <input
               type="number"
               min="0"
               step="0.01"
+              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
               value={orderTotalInput}
               onChange={(e) => setOrderTotalInput(e.target.value)}
             />
           </label>
-          <label>
+          <label style={{ display: 'block', marginBottom: '10px' }}>
             Order Notes
             <input
               type="text"
+              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
               value={orderNotesInput}
               onChange={(e) => setOrderNotesInput(e.target.value)}
             />
           </label>
         </div>
-        <button className="btn btn-success" onClick={handleNewOrder} disabled={creatingOrder}>
+        <button 
+          className="btn btn-success" 
+          onClick={handleNewOrder} 
+          disabled={creatingOrder}
+        >
           {creatingOrder ? 'Placing Order...' : 'Place Order'}
         </button>
       </div>

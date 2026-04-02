@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getOrderHistory } from '../services/api';
 import type { OrderHistoryItem } from '../services/api';
 
@@ -25,26 +25,32 @@ export const OrderHistory = ({ customerId }: { customerId: number }) => {
   return (
     <div className="card">
       <h2>Order History</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Order ID</th>
-            <th>Date</th>
-            <th>Status</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {orders.map(order => (
-            <tr key={order.orderId}>
-              <td>#{order.orderId}</td>
-              <td>{new Date(order.orderDate).toLocaleDateString()}</td>
-              <td>{order.orderStatus}</td>
-              <td>${order.orderTotal.toFixed(2)}</td>
+      {orders.length === 0 ? (
+        <p>No orders found for this customer.</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Order ID</th>
+              <th>Date</th>
+              {/* Note: orderStatus is hidden as it is not in the current DB schema */}
+              {/* <th>Status</th> */}
+              <th>Total</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {orders.map(order => (
+              <tr key={order.orderId}>
+                <td>#{order.orderId}</td>
+                {/* FIXED: Changed orderDate to orderDatetime */}
+                <td>{new Date(order.orderDatetime).toLocaleDateString()}</td>
+                {/* <td>{order.orderStatus}</td> */}
+                <td>${order.orderTotal.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 };

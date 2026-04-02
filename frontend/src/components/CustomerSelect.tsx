@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react'; // FIXED: Removed 'React'
 import { getCustomers } from '../services/api';
 import type { CustomerOption } from '../services/api';
 
@@ -18,19 +18,20 @@ export const CustomerSelect = ({ onSelect }: { onSelect: (id: number) => void })
 
   // UI handler: confirm selection and move into the app
   const handleContinue = () => {
-    if (!selectedCustomerId) return;
-    onSelect(Number(selectedCustomerId));
+    const idNum = Number(selectedCustomerId);
+    if (!selectedCustomerId || isNaN(idNum)) return;
+    onSelect(idNum);
   };
 
   return (
     <div className="card" style={{ maxWidth: '420px', margin: '100px auto' }}>
-      <h2>Select Customer</h2>
+      <h2 style={{ marginBottom: '20px', textAlign: 'center' }}>Select Customer</h2>
       <select
-        style={{ width: '100%', padding: '10px' }}
+        style={{ width: '100%', padding: '12px', borderRadius: '6px', border: '1px solid #ccc' }}
         value={selectedCustomerId}
         onChange={(e) => setSelectedCustomerId(e.target.value)}
       >
-        <option value="">Choose...</option>
+        <option value="">Choose a customer...</option>
         {customers.map(c => (
           <option key={c.customerId} value={c.customerId}>
             {c.fullName}
@@ -39,7 +40,7 @@ export const CustomerSelect = ({ onSelect }: { onSelect: (id: number) => void })
       </select>
       <button
         className="btn btn-primary"
-        style={{ width: '100%', marginTop: '12px' }}
+        style={{ width: '100%', marginTop: '16px', padding: '12px' }}
         onClick={handleContinue}
         disabled={!selectedCustomerId}
       >

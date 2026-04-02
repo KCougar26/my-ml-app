@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react'; // FIXED: Removed 'React'
 import { getPriorityQueue, runScoring } from '../services/api';
 import type { PriorityQueueItem } from '../services/api';
 
@@ -12,48 +12,78 @@ export const Warehouse = () => {
   const [loading, setLoading] = useState(false);
 
   // Backend integration: fetch priority queue
-  const loadQueue = () => getPriorityQueue().then(res => setQueue(res.data));
+  const loadQueue = () => {
+    setLoading(true);
+    getPriorityQueue()
+      .then(res => setQueue(res.data))
+      .finally(() => setLoading(false));
+  };
 
   // React lifecycle: initial load
-  useEffect(() => { loadQueue(); }, []);
+  useEffect(() => { 
+    loadQueue(); 
+  }, []);
 
   // UI handler: trigger ML scoring and refresh queue
   const handleScoring = async () => {
     setLoading(true);
-    await runScoring();
-    await loadQueue();
-    setLoading(false);
+    try {
+      await runScoring();
+      // Small delay to let the backend process the model results
+      setTimeout(() => loadQueue(), 500); 
+    } catch (err) {
+      console.error("Scoring failed:", err);
+      setLoading(false);
+    }
   };
 
   return (
     <div className="card">
-      <div className="flex-row">
-        <h2>Late Delivery Priority Queue</h2>
-        <button className="btn btn-primary" onClick={handleScoring} disabled={loading}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 style={{ margin: 0 }}>Late Delivery Priority Queue</h2>
+        <button 
+          className="btn btn-primary" 
+          onClick={handleScoring} 
+          disabled={loading}
+        >
           {loading ? 'Scoring...' : 'Run Scoring'}
         </button>
       </div>
-      <p>Showing top {queue.length} orders by predicted late-delivery probability.</p>
+      
+      <p>Showing {queue.length} orders by predicted late-delivery probability.</p>
+      
       <table>
         <thead>
           <tr>
             <th>Order ID</th>
             <th>Risk</th>
-            <th>Visual</th>
+            <th style={{ width: '40%' }}>Visual Risk Level</th>
           </tr>
         </thead>
         <tbody>
-          {queue.map(o => (
-            <tr key={o.orderId}>
-              <td>#{o.orderId}</td>
-              <td>{(o.lateDeliveryProbability * 100).toFixed(1)}%</td>
-              <td>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: `${o.lateDeliveryProbability * 100}%` }} />
-                </div>
-              </td>
-            </tr>
-          ))}
+          {queue.map(o => {
+            const riskPercent = (o.lateDeliveryProbability || 0) * 100;
+            return (
+              <tr key={o.orderId}>
+                <td>#{o.orderId}</td>
+                <td>{riskPercent.toFixed(1)}%</td>
+                <td>
+                  <div className="progress-bar" style={{ background: '#eee', borderRadius: '4px', height: '10px' }}>
+                    <div 
+                      className="progress-fill" 
+                      style={{ 
+                        width: `${riskPercent}%`, 
+                        height: '100%', 
+                        background: riskPercent > 70 ? '#ff4d4f' : riskPercent > 40 ? '#faad14' : '#52c41a',
+                        borderRadius: '4px',
+                        transition: 'width 0.5s ease'
+                      }} 
+                    />
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
