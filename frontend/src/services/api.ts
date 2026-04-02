@@ -1,67 +1,80 @@
 import axios from 'axios';
 
 // -----------------------------
-// Backend data shapes (frontend expects these from the API)
+// Backend data shapes (Matches .NET Models)
 // -----------------------------
-export type CustomerOption = {
+
+export interface CustomerOption {
   customerId: number;
   fullName: string;
-};
+}
 
-export type OrderSummary = {
+export interface OrderSummary {
   orderId: number;
   orderTotal: number;
-  orderDate: string;
-};
+  orderDatetime: string; // Matches C# OrderDatetime
+}
 
-export type CustomerDashboardData = {
-  customerId: number;
+export interface CustomerDashboardData {
   totalOrders: number;
   totalSpent: number;
   recentOrders: OrderSummary[];
-};
+}
 
-export type OrderHistoryItem = {
+export interface OrderHistoryItem {
   orderId: number;
   orderTotal: number;
-  orderDate: string;
-  orderStatus: string;
-};
+  orderDatetime: string;
+}
 
-export type PriorityQueueItem = {
+export interface PriorityQueueItem {
   orderId: number;
   lateDeliveryProbability: number;
-};
+}
 
-export type NewOrderRequest = {
+export interface NewOrderRequest {
   customerId: number;
   orderTotal: number;
-  orderNotes: string;
-};
+  // Note: 'orderNotes' is not in the current shop.db schema, 
+  // so we keep it optional to prevent backend errors.
+  orderNotes?: string; 
+}
 
 // -----------------------------
-// Axios client (backend team: update baseURL to your deployed API)
+// Axios client configuration
 // -----------------------------
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5020/api',
+  // Use VITE_API_BASE_URL in Vercel settings. 
+  // Falls back to localhost for your MacBook development.
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5020/api',
 });
 
 // -----------------------------
-// Customer selection and dashboard
+// API Call Methods
 // -----------------------------
-export const getCustomers = () => api.get<CustomerOption[]>('/store/customers');
+
+// 1. Customer selection
+export const getCustomers = () => 
+  api.get<CustomerOption[]>('/store/customers');
+
+// 2. Dashboard summary
 export const getCustomerDashboard = (id: number) =>
   api.get<CustomerDashboardData>(`/store/customers/${id}/dashboard`);
 
-// -----------------------------
-// Orders: create and history
-// -----------------------------
-export const placeOrder = (order: NewOrderRequest) => api.post('/store/orders', order);
+// 3. Place a new order
+export const placeOrder = (order: NewOrderRequest) => 
+  api.post('/store/orders', order);
+
+// 4. Full order history
 export const getOrderHistory = (customerId: number) =>
   api.get<OrderHistoryItem[]>(`/store/customers/${customerId}/orders`);
 
-// -----------------------------
-// Warehouse: late-delivery priority queue + scoring trigger
-// -----------------------------
-export const getPriorityQueue = () => api.get<PriorityQueueItem[]>('/store/warehouse/priority-queue');
-export const runScoring = () => api.post('/store/warehouse/run-scoring');
+// 5. Warehouse / ML Priority Queue
+export const getPriorityQueue = () => 
+  api.get<PriorityQueueItem[]>('/store/warehouse/priority-queue');
+
+// 6. Trigger the ML Scoring Job
+export const runScoring = () => 
+  api.post('/store/warehouse/run-scoring');
+
+export default api;
