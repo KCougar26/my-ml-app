@@ -8,27 +8,29 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        // This ensures C# 'OrderDatetime' becomes 'orderDatetime' in React
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     });
 
-// 2. Configure SQLite with a robust path
-// This ensures the DB is found regardless of where the app is hosted
-var dbPath = Path.Combine(AppContext.BaseDirectory, "shop.db");
+// 2. Configure PostgreSQL (Supabase)
+// It will look for a Connection String in your environment variables/appsettings.json
+// If it's not found, it defaults to the local shop.db (useful for quick local tests)
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+                      ?? "Host=ppmkjfmxztmgpqutrajn.supabase.co;Database=postgres;Username=postgres;Password=SultaiPlayer4Life";
+
 builder.Services.AddDbContext<ShopContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
+    options.UseNpgsql(connectionString));
 
 // 3. Robust CORS Policy
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("VercelPolicy", policy =>
     {
-        policy.WithOrigins("https://your-app-name.vercel.app") // Replace with your actual Vercel URL
+        // Replace this with your actual Vercel URL once the site is live
+        policy.WithOrigins("https://my-ml-app-kcougar26.vercel.app") 
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
     
-    // Keep a default policy for local development
     options.AddDefaultPolicy(policy =>
     {
         policy.AllowAnyOrigin()
@@ -40,14 +42,13 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // 4. Configure the HTTP request pipeline
-// Use the specific policy for production
 if (app.Environment.IsProduction())
 {
     app.UseCors("VercelPolicy");
 }
 else
 {
-    app.UseCors(); // Uses the default "AllowAll" for local dev
+    app.UseCors(); 
 }
 
 app.UseAuthorization();
