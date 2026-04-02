@@ -1,14 +1,29 @@
+/* Layout containers */
 .container { max-width: 1000px; margin: 0 auto; padding: 20px; font-family: sans-serif; }
 .card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; background: white; }
 .flex-row { display: flex; justify-content: space-between; align-items: center; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+/* Buttons */
 .btn { padding: 10px 20px; border-radius: 5px; cursor: pointer; border: none; font-weight: bold; }
 .btn-primary { background: #007bff; color: white; }
 .btn-success { background: #28a745; color: white; width: 100%; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Navigation */
 .nav { border-bottom: 2px solid #eee; margin-bottom: 30px; padding-bottom: 10px; }
 .nav button { margin-right: 20px; background: none; border: none; cursor: pointer; font-size: 16px; }
 .nav button.active { color: #007bff; border-bottom: 2px solid #007bff; font-weight: bold; }
+
+/* Form styles */
+.form-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; margin-bottom: 14px; }
+label { display: grid; gap: 6px; font-weight: 600; }
+input { padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; }
+
+/* Tables */
 table { width: 100%; border-collapse: collapse; margin-top: 10px; }
 th, td { border-bottom: 1px solid #eee; padding: 12px; text-align: left; }
-.progress-bar { background: #eee; border-radius: 10px; height: 10px; width: 100px; }
+
+/* Warehouse risk visualization */
+.progress-bar { background: #eee; border-radius: 10px; height: 10px; width: 120px; }
 .progress-fill { background: red; height: 10px; border-radius: 10px; }
