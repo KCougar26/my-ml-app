@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import axios from 'axios';
 
 // -----------------------------
@@ -12,7 +13,7 @@ export interface CustomerOption {
 export interface OrderSummary {
   orderId: number;
   orderTotal: number;
-  orderDatetime: string; // Matches C# OrderDatetime
+  orderDatetime: string; 
 }
 
 export interface CustomerDashboardData {
@@ -35,17 +36,21 @@ export interface PriorityQueueItem {
 export interface NewOrderRequest {
   customerId: number;
   orderTotal: number;
-  // Note: 'orderNotes' is not in the current shop.db schema, 
-  // so we keep it optional to prevent backend errors.
   orderNotes?: string; 
+}
+
+export interface FraudResponse {
+  probability: number;
+  risk_level: 'HIGH' | 'MEDIUM' | 'LOW';
+  is_fraud: boolean;
 }
 
 // -----------------------------
 // Axios client configuration
 // -----------------------------
+
+// This instance handles your standard .NET Backend (Port 5020)
 const api = axios.create({
-  // Use VITE_API_BASE_URL in Vercel settings. 
-  // Falls back to localhost for your MacBook development.
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5020/api',
 });
 
@@ -76,5 +81,17 @@ export const getPriorityQueue = () =>
 // 6. Trigger the ML Scoring Job
 export const runScoring = () => 
   api.post('/store/warehouse/run-scoring');
+
+// 7. Fraud Detection Check (Python FastAPI Bridge - Port 8000)
+export const checkOrderRisk = async (orderData: any): Promise<FraudResponse> => {
+  // We use a direct axios.post here because the port (8000) 
+  // is different from the .NET base URL (5020).
+  const response = await axios.post<FraudResponse>(
+    'http://localhost:8000/predict', 
+    orderData
+  );
+  
+  return response.data;
+};
 
 export default api;

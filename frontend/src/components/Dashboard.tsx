@@ -1,43 +1,63 @@
 import { useEffect, useState } from 'react';
-import { getCustomerDashboard, placeOrder } from '../services/api';
-import type { CustomerDashboardData, NewOrderRequest } from '../services/api';
+// 1. ADD checkOrderRisk TO YOUR IMPORTS
+import { getCustomerDashboard, placeOrder, checkOrderRisk } from '../services/api';
+import type { CustomerDashboardData, NewOrderRequest, FraudResponse } from '../services/api';
 
-// -----------------------------
-// Customer Dashboard (summaries + recent orders + new order)
-// -----------------------------
 export const Dashboard = ({ customerId }: { customerId: number }) => {
-  // Frontend state: dashboard data from backend
   const [data, setData] = useState<CustomerDashboardData | null>(null);
-  // Frontend state: new order form inputs
   const [orderTotalInput, setOrderTotalInput] = useState<string>('49.99');
   const [orderNotesInput, setOrderNotesInput] = useState<string>('Standard delivery');
-  // Frontend state: submission status
   const [creatingOrder, setCreatingOrder] = useState(false);
+  
+  // 2. ADD A STATE TO TRACK THE ML RESULT
+  const [fraudRisk, setFraudRisk] = useState<FraudResponse | null>(null);
 
-  // Backend integration: load dashboard summary data
   const loadData = () => getCustomerDashboard(customerId).then(res => setData(res.data));
 
-  // React lifecycle: refresh data when customer changes
   useEffect(() => { loadData(); }, [customerId]);
 
-  // UI handler: submit a new order to the backend
+  // 3. UPDATED HANDLER
   const handleNewOrder = async () => {
     const orderTotal = Number(orderTotalInput);
     if (Number.isNaN(orderTotal) || orderTotal <= 0) return;
 
-    const newOrderPayload: NewOrderRequest = {
-      customerId,
-      orderTotal,
-      orderNotes: orderNotesInput,
-    };
-
     setCreatingOrder(true);
+    
     try {
+      // --- STEP A: ML CHECK ---
+      // We send the data to the Python bridge first
+      const riskCheck = await checkOrderRisk({
+        customerId: customerId,
+        orderTotal: orderTotal,
+        orderNotes: orderNotesInput
+      });
+      
+      setFraudRisk(riskCheck);
+
+      // --- STEP B: BUSINESS LOGIC ---
+      // If risk is CRITICAL, maybe we block the order?
+      if (riskCheck.risk_level === 'HIGH') {
+        const confirm = window.confirm("⚠️ HIGH FRAUD RISK DETECTED. Proceed anyway?");
+        if (!confirm) {
+          setCreatingOrder(false);
+          return;
+        }
+      }
+
+      // --- STEP C: SAVE TO DATABASE ---
+      const newOrderPayload: NewOrderRequest = {
+        customerId,
+        orderTotal,
+        orderNotes: orderNotesInput,
+      };
+
       await placeOrder(newOrderPayload);
-      setOrderTotalInput('49.99'); // Reset form
+      setOrderTotalInput('49.99'); 
+      setFraudRisk(null); // Clear risk after success
       loadData();
     } catch (error) {
       console.error("Order failed", error);
+      alert("Error: Check if your Python API (Port 8000) is running!");
     } finally {
       setCreatingOrder(false);
     }
@@ -47,59 +67,35 @@ export const Dashboard = ({ customerId }: { customerId: number }) => {
 
   return (
     <div>
-      <div className="grid">
-        <div className="card">
-          <h3>Total Orders</h3>
-          <p>{data.totalOrders}</p>
-        </div>
-        <div className="card">
-          <h3>Total Spent</h3>
-          <p>${data.totalSpent?.toFixed(2)}</p>
-        </div>
-      </div>
-
-      <div className="card">
-        <h3>Recent Orders</h3>
-        <ul>
-          {data.recentOrders.map(o => (
-            <li key={o.orderId}>
-              {/* FIXED: Changed o.orderDate to o.orderDatetime */}
-              Order #{o.orderId}: ${o.orderTotal.toFixed(2)} on {new Date(o.orderDatetime).toLocaleDateString()}
-            </li>
-          ))}
-        </ul>
-      </div>
+      {/* ... (Keep your existing summary grid and recent orders) ... */}
 
       <div className="card">
         <h3>Place New Order</h3>
+        
+        {/* 4. SHOW A RISK BADGE IF DATA EXISTS */}
+        {fraudRisk && (
+          <div style={{ 
+            padding: '10px', 
+            borderRadius: '5px', 
+            marginBottom: '15px',
+            backgroundColor: fraudRisk.risk_level === 'HIGH' ? '#ffebee' : '#e8f5e9',
+            border: `1px solid ${fraudRisk.risk_level === 'HIGH' ? '#f44336' : '#4caf50'}`
+          }}>
+            <strong>ML Assessment:</strong> {fraudRisk.risk_level} RISK 
+            ({(fraudRisk.probability * 100).toFixed(1)}% match)
+          </div>
+        )}
+
         <div className="form-grid">
-          <label style={{ display: 'block', marginBottom: '10px' }}>
-            Order Total (USD)
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              value={orderTotalInput}
-              onChange={(e) => setOrderTotalInput(e.target.value)}
-            />
-          </label>
-          <label style={{ display: 'block', marginBottom: '10px' }}>
-            Order Notes
-            <input
-              type="text"
-              style={{ width: '100%', padding: '8px', marginTop: '5px' }}
-              value={orderNotesInput}
-              onChange={(e) => setOrderNotesInput(e.target.value)}
-            />
-          </label>
+           {/* ... (Keep your inputs here) ... */}
         </div>
+
         <button 
           className="btn btn-success" 
           onClick={handleNewOrder} 
           disabled={creatingOrder}
         >
-          {creatingOrder ? 'Placing Order...' : 'Place Order'}
+          {creatingOrder ? 'Analyzing & Placing...' : 'Place Order'}
         </button>
       </div>
     </div>
