@@ -6,7 +6,7 @@ import type { CustomerDashboardData, NewOrderRequest, FraudResponse } from '../s
 export const Dashboard = ({ customerId }: { customerId: number }) => {
   const [data, setData] = useState<CustomerDashboardData | null>(null);
   const [orderTotalInput, setOrderTotalInput] = useState<string>('49.99');
-  const [orderNotesInput, setOrderNotesInput] = useState<string>('Standard delivery');
+  const [orderNotesInput] = useState<string>('Standard delivery');
   const [creatingOrder, setCreatingOrder] = useState(false);
   
   // 2. ADD A STATE TO TRACK THE ML RESULT
