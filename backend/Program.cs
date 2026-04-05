@@ -27,21 +27,21 @@ builder.Services.AddDbContext<ShopContext>(options =>
     }
     else
     {
-        throw new InvalidOperationException("Missing database connection string.");
+        throw new InvalidOperationException("Missing database connection string. Set ConnectionStrings:DefaultConnection or DATABASE_URL.");
     }
 });
 
 builder.Services.AddHttpClient();
 
-// 3. UPDATED: Robust CORS Policy
-// We'll define one policy that covers all your needs
+// 3. Robust CORS Policy
+// We are explicitly allowing your Localhost and your Vercel URL
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("VercelPolicy", policy =>
     {
         policy.WithOrigins(
-                "http://localhost:5173",          // Local Vite
-                "https://my-ml-app.vercel.app"    // Your EXACT Vercel URL
+                "http://localhost:5173", 
+                "https://my-ml-app.vercel.app"
               )
               .AllowAnyMethod()
               .AllowAnyHeader();
@@ -50,9 +50,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// 4. UPDATED: Middleware Pipeline
-// Use the "AllowAll" policy for everything to keep it simple
-app.UseCors("AllowAll");
+// 4. Configure the HTTP request pipeline
+// Apply the policy globally for both Dev and Prod to avoid any mismatch
+app.UseCors("VercelPolicy");
 
 app.UseAuthorization();
 app.MapControllers();
