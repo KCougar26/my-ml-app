@@ -5,7 +5,7 @@ import type { OrderHistoryItem } from '../services/api';
 // -----------------------------
 // Order History page for the selected customer
 // -----------------------------
-export const OrderHistory = ({ customerId }: { customerId: number }) => {
+export const OrderHistory = ({ customerId: _customerId}: { customerId: number }) => {
   // Frontend state: list of historical orders from backend
   const [orders, setOrders] = useState<OrderHistoryItem[]>([]);
   // Frontend state: loading indicator
