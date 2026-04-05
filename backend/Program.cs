@@ -13,15 +13,25 @@ builder.Services.AddControllers()
 
 // 2. Configure PostgreSQL (Supabase)
 // It will look for a Connection String in your environment variables/appsettings.json
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
                       ?? builder.Configuration["DATABASE_URL"];
-if (string.IsNullOrWhiteSpace(connectionString))
-{
-    throw new InvalidOperationException("Missing database connection string. Set ConnectionStrings:DefaultConnection or DATABASE_URL.");
-}
 
 builder.Services.AddDbContext<ShopContext>(options =>
-    options.UseNpgsql(connectionString));
+{
+    if (!string.IsNullOrWhiteSpace(connectionString))
+    {
+        options.UseNpgsql(connectionString);
+        return;
+    }
+
+    if (builder.Environment.IsDevelopment())
+    {
+        options.UseSqlite("Data Source=shop.db");
+        return;
+    }
+
+    throw new InvalidOperationException("Missing database connection string. Set ConnectionStrings:DefaultConnection or DATABASE_URL.");
+});
 
 builder.Services.AddHttpClient();
 
@@ -34,10 +44,10 @@ builder.Services.AddCors(options =>
                      ?? builder.Configuration["FRONTEND_ORIGIN"];
         if (!string.IsNullOrWhiteSpace(origin))
         {
-            policy.WithOrigins(origin);
+            policy.WithOrigins(origin)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
         }
-        .AllowAnyMethod()
-        .AllowAnyHeader();
     });
     
     options.AddDefaultPolicy(policy =>
