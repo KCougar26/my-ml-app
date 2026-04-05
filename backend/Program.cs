@@ -4,7 +4,7 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add Controllers with JSON naming consistency
+// 1. Add Controllers
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
@@ -25,36 +25,32 @@ builder.Services.AddDbContext<ShopContext>(options =>
     {
         options.UseSqlite("Data Source=shop.db");
     }
-    else
-    {
-        throw new InvalidOperationException("Missing database connection string. Set ConnectionStrings:DefaultConnection or DATABASE_URL.");
-    }
 });
 
 builder.Services.AddHttpClient();
 
-// 3. Robust CORS Policy
-// We are explicitly allowing your Localhost and your Vercel URL
+// 3. Define the Policy
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("VercelPolicy", policy =>
     {
-        policy.WithOrigins(
-                "http://localhost:5173", 
-                "https://my-ml-app.vercel.app"
-              )
+        policy.WithOrigins("https://my-ml-app.vercel.app") // No trailing slash!
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .AllowCredentials(); // Added for extra compatibility
     });
 });
 
 var app = builder.Build();
 
-// 4. Configure the HTTP request pipeline
-// Apply the policy globally for both Dev and Prod to avoid any mismatch
-app.UseCors("VercelPolicy");
+// 4. THE PIPELINE - ORDER IS CRITICAL HERE
+app.UseRouting();
+
+// CORS MUST BE HERE: After Routing, Before Authorization/Map
+app.UseCors("VercelPolicy"); 
 
 app.UseAuthorization();
+
 app.MapControllers();
 
 app.Run();
