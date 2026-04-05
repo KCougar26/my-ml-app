@@ -31,4 +31,4 @@ RUN chmod 666 /app/shop.db
 EXPOSE 80
 EXPOSE 8080
 
-ENTRYPOINT ["dotnet", "Backend.dll"]
+ENTRYPOINT ["dotnet", "backend.dll"]
