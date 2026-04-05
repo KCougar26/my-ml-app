@@ -30,7 +30,7 @@ export interface OrderHistoryItem {
 
 export interface PriorityQueueItem {
   orderId: number;
-  lateDeliveryProbability: number;
+  riskScore: number;
 }
 
 export interface NewOrderRequest {
@@ -74,6 +74,10 @@ export const placeOrder = (order: NewOrderRequest) =>
 export const getOrderHistory = (customerId: number) =>
   api.get<OrderHistoryItem[]>(`/store/customers/${customerId}/orders`);
 
+// 4b. Admin: all orders
+export const getAllOrders = () =>
+  api.get<OrderHistoryItem[]>('/store/orders');
+
 // 5. Warehouse / ML Priority Queue
 export const getPriorityQueue = () => 
   api.get<PriorityQueueItem[]>('/store/warehouse/priority-queue');
@@ -86,8 +90,9 @@ export const runScoring = () =>
 export const checkOrderRisk = async (orderData: any): Promise<FraudResponse> => {
   // We use a direct axios.post here because the port (8000) 
   // is different from the .NET base URL (5020).
+  const scoringBaseUrl = import.meta.env.VITE_SCORING_BASE_URL || 'http://localhost:8000';
   const response = await axios.post<FraudResponse>(
-    'http://localhost:8000/predict', 
+    `${scoringBaseUrl}/predict`, 
     orderData
   );
   

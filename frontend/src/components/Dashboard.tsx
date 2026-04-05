@@ -37,7 +37,7 @@ export const Dashboard = ({ customerId }: { customerId: number }) => {
       // --- STEP B: BUSINESS LOGIC ---
       // If risk is CRITICAL, maybe we block the order?
       if (riskCheck.risk_level === 'HIGH') {
-        const confirm = window.confirm("⚠️ HIGH FRAUD RISK DETECTED. Proceed anyway?");
+        const confirm = window.confirm("HIGH FRAUD RISK DETECTED. Proceed anyway?");
         if (!confirm) {
           setCreatingOrder(false);
           return;

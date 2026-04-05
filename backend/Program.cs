@@ -13,22 +13,31 @@ builder.Services.AddControllers()
 
 // 2. Configure PostgreSQL (Supabase)
 // It will look for a Connection String in your environment variables/appsettings.json
-// If it's not found, it defaults to the local shop.db (useful for quick local tests)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-                      ?? "Host=ppmkjfmxztmgpqutrajn.supabase.co;Database=postgres;Username=postgres;Password=SultaiPlayer4Life";
+                      ?? builder.Configuration["DATABASE_URL"];
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException("Missing database connection string. Set ConnectionStrings:DefaultConnection or DATABASE_URL.");
+}
 
 builder.Services.AddDbContext<ShopContext>(options =>
     options.UseNpgsql(connectionString));
+
+builder.Services.AddHttpClient();
 
 // 3. Robust CORS Policy
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("VercelPolicy", policy =>
     {
-        // Replace this with your actual Vercel URL once the site is live
-        policy.WithOrigins("https://my-ml-app-kcougar26.vercel.app") 
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        var origin = builder.Configuration["Frontend:Origin"] 
+                     ?? builder.Configuration["FRONTEND_ORIGIN"];
+        if (!string.IsNullOrWhiteSpace(origin))
+        {
+            policy.WithOrigins(origin);
+        }
+        .AllowAnyMethod()
+        .AllowAnyHeader();
     });
     
     options.AddDefaultPolicy(policy =>

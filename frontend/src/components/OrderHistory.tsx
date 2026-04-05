@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getOrderHistory } from '../services/api';
+import { getAllOrders } from '../services/api';
 import type { OrderHistoryItem } from '../services/api';
 
 // -----------------------------
@@ -12,19 +12,19 @@ export const OrderHistory = ({ customerId }: { customerId: number }) => {
   const [loading, setLoading] = useState(true);
 
   // Backend integration: fetch order history for the selected customer
-  const loadHistory = () => getOrderHistory(customerId).then(res => setOrders(res.data));
+  const loadHistory = () => getAllOrders().then(res => setOrders(res.data));
 
   // React lifecycle: load history when customer changes
   useEffect(() => {
     setLoading(true);
     loadHistory().finally(() => setLoading(false));
-  }, [customerId]);
+  }, []);
 
   if (loading) return <p>Loading order history...</p>;
 
   return (
     <div className="card">
-      <h2>Order History</h2>
+      <h2>Order History (Admin)</h2>
       {orders.length === 0 ? (
         <p>No orders found for this customer.</p>
       ) : (

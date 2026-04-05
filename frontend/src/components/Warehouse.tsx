@@ -62,7 +62,7 @@ export const Warehouse = () => {
         </thead>
         <tbody>
           {queue.map(o => {
-            const riskPercent = (o.lateDeliveryProbability || 0) * 100;
+            const riskPercent = o.riskScore || 0;
             return (
               <tr key={o.orderId}>
                 <td>#{o.orderId}</td>
