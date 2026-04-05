@@ -21,14 +21,14 @@ namespace Backend.Controllers
             _configuration = configuration;
         }
 
-        // 1. Get all customers (for the "Select Customer" screen)
+        // 1. Get all customers
         [HttpGet("customers")]
         public async Task<ActionResult<IEnumerable<Customer>>> GetCustomers()
         {
             return await _context.Customers.ToListAsync();
         }
 
-        // 2. Get customer dashboard data (summary of their orders)
+        // 2. Get customer dashboard data
         [HttpGet("customers/{id}/dashboard")]
         public async Task<IActionResult> GetDashboard(int id)
         {
@@ -56,43 +56,21 @@ namespace Backend.Controllers
                 .ToListAsync();
         }
 
-        // 3b. Admin: Get all orders
-        [HttpGet("orders")]
-        public async Task<ActionResult<IEnumerable<Order>>> GetAllOrders()
-        {
-            return await _context.Orders
-                .OrderByDescending(o => o.OrderDatetime)
-                .ToListAsync();
-        }
-
         // 4. Place a new order
         [HttpPost("orders")]
         public async Task<IActionResult> PlaceOrder(Order order)
         {
             order.OrderDatetime = DateTime.Now;
-            // Defaults to satisfy NOT NULL columns in Supabase schema
             order.PaymentMethod = string.IsNullOrWhiteSpace(order.PaymentMethod) ? "card" : order.PaymentMethod;
             order.DeviceType = string.IsNullOrWhiteSpace(order.DeviceType) ? "desktop" : order.DeviceType;
             order.IpCountry = string.IsNullOrWhiteSpace(order.IpCountry) ? "US" : order.IpCountry;
-
-            if (order.OrderSubtotal <= 0)
-            {
-                order.OrderSubtotal = order.OrderTotal > 0 ? order.OrderTotal : 49.99;
-            }
-            if (order.ShippingFee < 0) order.ShippingFee = 0;
-            if (order.TaxAmount < 0) order.TaxAmount = 0;
-            if (order.OrderTotal <= 0)
-            {
-                order.OrderTotal = order.OrderSubtotal + order.ShippingFee + order.TaxAmount;
-            }
-            if (order.RiskScore < 0) order.RiskScore = 0;
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
             return Ok(order);
         }
 
-        // 5. Late Delivery Priority Queue (Top 50)
+        // 5. Priority Queue
         [HttpGet("warehouse/priority-queue")]
         public async Task<ActionResult<IEnumerable<Order>>> GetPriorityQueue()
         {
@@ -102,60 +80,63 @@ namespace Backend.Controllers
                 .ToListAsync();
         }
 
-        // 6. Run Scoring (The ML Inference Trigger)
-        [HttpPost("warehouse/run-scoring")]
+        // 6. Run Scoring (THIS IS YOUR PREDICTION TRIGGER)
+        // URL will be: https://store-backend-3sz6.onrender.com/api/Store/run-scoring
+        [HttpPost("run-scoring")]
         public async Task<IActionResult> RunScoring()
         {
             var orders = await _context.Orders.ToListAsync();
-            var baseUrl = _configuration["Scoring:BaseUrl"] 
-                          ?? _configuration["SCORING_BASE_URL"];
+            
+            // Checks both appsettings and Render Env Vars
+            var baseUrl = _configuration["SCORING_BASE_URL"] ?? _configuration["Scoring:BaseUrl"];
+            
             if (string.IsNullOrWhiteSpace(baseUrl))
             {
-                return BadRequest(new { message = "Scoring service URL not configured." });
+                return BadRequest(new { message = "Scoring service URL (SCORING_BASE_URL) is missing in Render settings." });
             }
+
             var client = _httpClientFactory.CreateClient();
 
             foreach (var order in orders)
             {
                 var payload = new
                 {
-                    customerId = order.CustomerId,
-                    orderTotal = order.OrderTotal,
-                    paymentMethod = order.PaymentMethod,
-                    deviceType = order.DeviceType,
-                    ipCountry = order.IpCountry
+                    // Match these keys EXACTLY to what your Python FastAPI expects
+                    order_total = order.OrderTotal,
+                    payment_method = order.PaymentMethod,
+                    device_type = order.DeviceType,
+                    ip_country = order.IpCountry
                 };
 
                 try
                 {
-                    var response = await client.PostAsJsonAsync($"{baseUrl.TrimEnd('/')}/predict", payload);
-                    if (!response.IsSuccessStatusCode)
+                    // Ensure the URL ends correctly
+                    var requestUrl = $"{baseUrl.TrimEnd('/')}/predict";
+                    var response = await client.PostAsJsonAsync(requestUrl, payload);
+                    
+                    if (response.IsSuccessStatusCode)
                     {
-                        continue;
+                        var result = await response.Content.ReadFromJsonAsync<ScoringResponse>();
+                        if (result != null)
+                        {
+                            order.RiskScore = Math.Round(result.probability * 100, 2);
+                            order.IsFraud = result.is_fraud;
+                        }
                     }
-
-                    var result = await response.Content.ReadFromJsonAsync<ScoringResponse>();
-                    if (result == null) continue;
-
-                    // Convert probability (0-1) to risk_score (0-100)
-                    order.RiskScore = Math.Round(result.probability * 100, 2);
-                    order.IsFraud = result.is_fraud;
                 }
                 catch
                 {
-                    // If scoring fails for a record, skip it to keep the job moving
-                    continue;
+                    continue; 
                 }
             }
 
             await _context.SaveChangesAsync();
-            return Ok(new { message = "ML Scoring job completed and priority queue refreshed." });
+            return Ok(new { message = "ML Scoring job completed successfully." });
         }
 
         private sealed class ScoringResponse
         {
             public double probability { get; set; }
-            public string risk_level { get; set; } = "LOW";
             public bool is_fraud { get; set; }
         }
     }
