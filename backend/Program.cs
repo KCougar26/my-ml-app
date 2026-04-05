@@ -12,7 +12,6 @@ builder.Services.AddControllers()
     });
 
 // 2. Configure PostgreSQL (Supabase)
-// It will look for a Connection String in your environment variables/appsettings.json
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
                       ?? builder.Configuration["DATABASE_URL"];
 
@@ -21,38 +20,29 @@ builder.Services.AddDbContext<ShopContext>(options =>
     if (!string.IsNullOrWhiteSpace(connectionString))
     {
         options.UseNpgsql(connectionString);
-        return;
     }
-
-    if (builder.Environment.IsDevelopment())
+    else if (builder.Environment.IsDevelopment())
     {
         options.UseSqlite("Data Source=shop.db");
-        return;
     }
-
-    throw new InvalidOperationException("Missing database connection string. Set ConnectionStrings:DefaultConnection or DATABASE_URL.");
+    else
+    {
+        throw new InvalidOperationException("Missing database connection string.");
+    }
 });
 
 builder.Services.AddHttpClient();
 
-// 3. Robust CORS Policy
+// 3. UPDATED: Robust CORS Policy
+// We'll define one policy that covers all your needs
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("VercelPolicy", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        var origin = builder.Configuration["Frontend:Origin"] 
-                     ?? builder.Configuration["FRONTEND_ORIGIN"];
-        if (!string.IsNullOrWhiteSpace(origin))
-        {
-            policy.WithOrigins(origin)
-                  .AllowAnyMethod()
-                  .AllowAnyHeader();
-        }
-    });
-    
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins(
+                "http://localhost:5173",          // Local Vite
+                "https://my-ml-app.vercel.app"    // Your EXACT Vercel URL
+              )
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
@@ -60,15 +50,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// 4. Configure the HTTP request pipeline
-if (app.Environment.IsProduction())
-{
-    app.UseCors("VercelPolicy");
-}
-else
-{
-    app.UseCors(); 
-}
+// 4. UPDATED: Middleware Pipeline
+// Use the "AllowAll" policy for everything to keep it simple
+app.UseCors("AllowAll");
 
 app.UseAuthorization();
 app.MapControllers();
