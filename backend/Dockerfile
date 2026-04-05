@@ -19,7 +19,7 @@ COPY --from=build /app/out .
 EXPOSE 80
 EXPOSE 8080
 
-COPY backend/shop.db .
+COPY shop.db .
 
 # IMPORTANT: Change 'Backend.dll' to your actual project name (e.g., WaterProject.dll)
 ENTRYPOINT ["dotnet", "backend.dll"]
