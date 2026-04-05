@@ -15,7 +15,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
                       ?? builder.Configuration["DATABASE_URL"];
 
 builder.Services.AddDbContext<ShopContext>(options =>
-    options.UseSqlite("Data Source=/var/lib/shopdata/shop.db"));
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddHttpClient();
 
