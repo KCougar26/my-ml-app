@@ -67,7 +67,7 @@ namespace Backend.Controllers
                 .ToListAsync();
         }
 
-        [HttpPost("run-scoring")]
+        [HttpGet("run-scoring")]
         public async Task<IActionResult> RunScoring()
         {
             // 1. FETCH THE ORDERS (Fixed the missing variable)
