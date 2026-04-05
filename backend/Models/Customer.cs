@@ -1,5 +1,6 @@
 namespace Backend.Models
 {
+    [Table("customers")]
     public class Customer
     {
         public int CustomerId { get; set; }

@@ -15,12 +15,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
                       ?? builder.Configuration["DATABASE_URL"];
 
 builder.Services.AddDbContext<ShopContext>(options =>
-{
-    if (!string.IsNullOrWhiteSpace(connectionString))
-    {
-        options.UseNpgsql(connectionString);
-    }
-});
+    options.UseSqlite("Data Source=/var/lib/shopdata/shop.db"));
 
 builder.Services.AddHttpClient();
 
