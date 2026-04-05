@@ -4,14 +4,13 @@ using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add Controllers
+// 1. Services
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
     });
 
-// 2. Configure PostgreSQL (Supabase)
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
                       ?? builder.Configuration["DATABASE_URL"];
 
@@ -21,33 +20,29 @@ builder.Services.AddDbContext<ShopContext>(options =>
     {
         options.UseNpgsql(connectionString);
     }
-    else if (builder.Environment.IsDevelopment())
-    {
-        options.UseSqlite("Data Source=shop.db");
-    }
 });
 
 builder.Services.AddHttpClient();
 
-// 3. Define the Policy
+// 2. The "Everything Allowed" Policy (For Troubleshooting)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("VercelPolicy", policy =>
+    options.AddPolicy("PermissivePolicy", policy =>
     {
-        policy.WithOrigins("https://my-ml-app.vercel.app") // No trailing slash!
+        policy.AllowAnyOrigin() 
               .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials(); // Added for extra compatibility
+              .AllowAnyHeader();
     });
 });
 
 var app = builder.Build();
 
-// 4. THE PIPELINE - ORDER IS CRITICAL HERE
+// 3. THE PIPELINE - THIS EXACT ORDER IS VITAL
+app.UseForwardedHeaders(); // Helps Render pass the correct original headers
 app.UseRouting();
 
-// CORS MUST BE HERE: After Routing, Before Authorization/Map
-app.UseCors("VercelPolicy"); 
+// MUST be between UseRouting and UseEndpoints/MapControllers
+app.UseCors("PermissivePolicy"); 
 
 app.UseAuthorization();
 
