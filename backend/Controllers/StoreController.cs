@@ -21,17 +21,16 @@ namespace Backend.Controllers
             _configuration = configuration;
         }
 
-        // 1. Get all customers
         [HttpGet("customers")]
         public async Task<ActionResult<IEnumerable<Customer>>> GetCustomers()
         {
             return await _context.Customers.ToListAsync();
         }
 
-        // 2. Get customer dashboard data
         [HttpGet("customers/{id}/dashboard")]
         public async Task<IActionResult> GetDashboard(int id)
         {
+            // Updated to match your CustomerId naming
             var orders = await _context.Orders
                 .Where(o => o.CustomerId == id)
                 .ToListAsync();
@@ -46,17 +45,6 @@ namespace Backend.Controllers
             return Ok(summary);
         }
 
-        // 3. Get order history for a specific customer
-        [HttpGet("customers/{id}/orders")]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrderHistory(int id)
-        {
-            return await _context.Orders
-                .Where(o => o.CustomerId == id)
-                .OrderByDescending(o => o.OrderDatetime)
-                .ToListAsync();
-        }
-
-        // 4. Place a new order
         [HttpPost("orders")]
         public async Task<IActionResult> PlaceOrder(Order order)
         {
@@ -70,7 +58,6 @@ namespace Backend.Controllers
             return Ok(order);
         }
 
-        // 5. Priority Queue
         [HttpGet("warehouse/priority-queue")]
         public async Task<ActionResult<IEnumerable<Order>>> GetPriorityQueue()
         {
@@ -80,17 +67,15 @@ namespace Backend.Controllers
                 .ToListAsync();
         }
 
-        // 6. Run Scoring (THIS IS YOUR PREDICTION TRIGGER)
-        // URL will be: https://store-backend-3sz6.onrender.com/api/Store/run-scoring
         [HttpPost("run-scoring")]
         public async Task<IActionResult> RunScoring()
         {
-            // This looks for "Scoring:BaseUrl" or "Scoring__BaseUrl"
-            var baseUrl = _configuration["Scoring:BaseUrl"];
+            // 1. FETCH THE ORDERS (Fixed the missing variable)
+            var orders = await _context.Orders.ToListAsync();
 
+            var baseUrl = _configuration["Scoring:BaseUrl"];
             if (string.IsNullOrWhiteSpace(baseUrl))
             {
-                // This will return a clear message instead of a 500 error
                 return BadRequest(new { error = "ML URL is missing. Check Render Env Vars for 'Scoring__BaseUrl'" });
             }
 
@@ -100,7 +85,7 @@ namespace Backend.Controllers
             {
                 var payload = new
                 {
-                    // Match these keys EXACTLY to what your Python FastAPI expects
+                    // Sending as snake_case for Python FastAPI
                     order_total = order.OrderTotal,
                     payment_method = order.PaymentMethod,
                     device_type = order.DeviceType,
@@ -109,7 +94,6 @@ namespace Backend.Controllers
 
                 try
                 {
-                    // Ensure the URL ends correctly
                     var requestUrl = $"{baseUrl.TrimEnd('/')}/predict";
                     var response = await client.PostAsJsonAsync(requestUrl, payload);
                     
@@ -118,13 +102,16 @@ namespace Backend.Controllers
                         var result = await response.Content.ReadFromJsonAsync<ScoringResponse>();
                         if (result != null)
                         {
+                            // Multiply by 100 to make it a "Score" out of 100
                             order.RiskScore = Math.Round(result.probability * 100, 2);
                             order.IsFraud = result.is_fraud;
                         }
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    // Logs error to Render but keeps the loop moving
+                    Console.WriteLine($"Error scoring order {order.OrderId}: {ex.Message}");
                     continue; 
                 }
             }
