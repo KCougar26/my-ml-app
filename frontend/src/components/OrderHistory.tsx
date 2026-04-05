@@ -18,7 +18,7 @@ export const OrderHistory = ({ customerId: _customerId}: { customerId: number })
   useEffect(() => {
     setLoading(true);
     loadHistory().finally(() => setLoading(false));
-  }, []);
+  }, [_customerId]);
 
   if (loading) return <p>Loading order history...</p>;
 
