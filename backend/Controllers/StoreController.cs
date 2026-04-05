@@ -85,14 +85,13 @@ namespace Backend.Controllers
         [HttpPost("run-scoring")]
         public async Task<IActionResult> RunScoring()
         {
-            var orders = await _context.Orders.ToListAsync();
-            
-            // Checks both appsettings and Render Env Vars
-            var baseUrl = _configuration["SCORING_BASE_URL"] ?? _configuration["Scoring:BaseUrl"];
-            
+            // This looks for "Scoring:BaseUrl" or "Scoring__BaseUrl"
+            var baseUrl = _configuration["Scoring:BaseUrl"];
+
             if (string.IsNullOrWhiteSpace(baseUrl))
             {
-                return BadRequest(new { message = "Scoring service URL (SCORING_BASE_URL) is missing in Render settings." });
+                // This will return a clear message instead of a 500 error
+                return BadRequest(new { error = "ML URL is missing. Check Render Env Vars for 'Scoring__BaseUrl'" });
             }
 
             var client = _httpClientFactory.CreateClient();
